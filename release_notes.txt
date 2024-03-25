@@ -2,6 +2,7 @@
 version 0.6
 
 - "Rigify Game Friendly": fix twist reparent on right side
+- New "Copy", "Paste" commands for retarget settings
 
 version 0.6
 

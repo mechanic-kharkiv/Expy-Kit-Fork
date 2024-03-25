@@ -329,6 +329,26 @@ class HumanSkeleton:
 
         return bone_map
 
+    def _as_dict(self, base=""):
+
+        def limb_as_dict(limb, base):
+            _d = {}
+            if getattr(limb, "__dict__", None):
+                for k, v in limb.__dict__.items():
+                    if k == "name":
+                        continue
+                    if getattr(v, "__dict__", None):
+                        _d.update(limb_as_dict(v, k if not base else base+"."+k))
+                    elif isinstance(v, list):
+                        _d.update({(k if not base else base+"."+k)+"."+kk : v for kk,v in zip(("a", "b", "c", "meta"), v)})
+                    else:
+                        _d[k if not base else base+"."+k] = v
+                return _d
+            else:
+                return {base : limb}
+
+        return limb_as_dict(self, base)
+
 
 class MixamoSkeleton(HumanSkeleton):
     def __init__(self):

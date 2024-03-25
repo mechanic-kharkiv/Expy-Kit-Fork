@@ -21,6 +21,41 @@ class RetargetBase():
                 return True
         return False
 
+    def _as_dict(self, base=''):
+        "returns all props with dot-delimited keys"
+        _res = {}
+        for _attr in self.keys():
+            if _attr == "name":
+                continue
+            _prop = getattr(self, _attr)
+            _subattrs = getattr(_prop, 'keys', None)
+            if _prop and _subattrs:
+                _res.update(_prop._as_dict(base=(base + "." if base else "") + _attr))
+            else:
+                _res[(base + "." if base else "") + _attr] = _prop
+        return _res
+
+    def _set_from_dict(self, d, base=''):
+        "sets props given in the dict with dot-delimited keys"
+        _attrs = []
+        _baselen = len(base) + 1
+        for k, v in d.items():
+            if base and k.startswith(base):
+                k = k[_baselen:]
+            _attrs.clear()
+            _attrs.extend(k.split("."))
+            if _attrs[-1] == "name":
+                continue
+            _prop = self
+            for _attr in _attrs[:-1]:
+                _prop = getattr(_prop, _attr)
+            _t = type(getattr(_prop, _attrs[-1]))
+            if _t is bool:
+                v = v.lower() in ("true", "1", "y", "yes")
+            elif _t is not str:
+                v = _t(v)
+            setattr(_prop, _attrs[-1], v)
+
 
 class RetargetSpine(RetargetBase, PropertyGroup):
     head: StringProperty(name="head")

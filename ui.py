@@ -1,5 +1,6 @@
 import bpy
 from bpy.props import StringProperty
+from bpy.props import BoolProperty
 from bpy.props import FloatProperty
 from bpy.props import PointerProperty
 from bpy.props import EnumProperty
@@ -371,6 +372,7 @@ class AddPresetArmatureRetarget(AddPresetBase, Operator):
 
 
 class ClearArmatureRetarget(Operator):
+    """Clear Retarget Settings of active skeleton"""
     bl_idname = "object.expy_kit_armature_clear"
     bl_label = "Clear Retarget Settings"
 
@@ -411,6 +413,144 @@ class ClearArmatureRetarget(Operator):
         skeleton.root = ''
         skeleton.deform_preset = '--'
 
+        return {'FINISHED'}
+
+
+class CopyArmatureRetarget(Operator):
+    """Copy current Retarget Settings to clipboard"""
+    bl_idname = "object.expy_kit_armature_copy"
+    bl_label = "Copy"
+
+    first_preset: EnumProperty(items=preset_handler.iterate_presets_with_current,
+                             name="1st Column Rig Type",
+                             description="This rig gives values for 1st table column. '--Current--' in both means 'As is'."
+                             )
+
+    second_preset: EnumProperty(items=preset_handler.iterate_presets_with_current,
+                             name="2nd Column Rig Type",
+                             description="This rig gives values for 2nd table column"
+                             )
+
+    only_mapped1: BoolProperty(name="Only mapped 1st",
+                              default=True,
+                              description="Skip empty values in 1st column"
+                              )
+
+    only_mapped2: BoolProperty(name="Only mapped 2nd",
+                              default=True,
+                              description="Skip empty values in 2nd column"
+                              )
+
+    verbose: BoolProperty(name="Verbose",
+                          default=True, description="Show copied data in the console")
+
+    @classmethod
+    def poll(cls, context):
+        return context.object and context.object.type == 'ARMATURE'
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+
+    def execute(self, context):
+        # get both parts' mappings
+        if self.first_preset == "--":
+            d1 = None
+        elif self.first_preset == "--Current--":
+            d1 = context.object.data.expykit_retarget._as_dict()
+        else:
+            d1 = preset_handler.get_preset_skel(self.first_preset)._as_dict()
+
+        if self.second_preset == "--":
+            d2 = None
+        elif self.second_preset == "--Current--":
+            d2 = context.object.data.expykit_retarget._as_dict()
+        else:
+            d2 = preset_handler.get_preset_skel(self.second_preset)._as_dict()
+
+        if d1 is None and d2 is None:
+            self.report({'WARNING'}, "Unsupported preset combination")
+            return {'CANCELLED'}
+
+        # special case - both are 'current' - as is
+        if self.first_preset == "--Current--" and self.second_preset == "--Current--":
+            d1 = {k : k for k in d1.keys()}
+
+        # get all keys for extraction
+        keys = context.object.data.expykit_retarget._as_dict().keys()
+
+        pairs = []
+        for k in keys:
+            v1 = d1.get(k) if d1 else None
+            v2 = d2.get(k) if d2 else None
+            if self.only_mapped1 and not v1 and v1 is not False:
+                continue
+            if self.only_mapped2 and not v2 and v2 is not False:
+                continue
+            if not v1 and v1 is not False and not v2 and v2 is not False:
+                continue    # both empty
+            if type(v1) == bool:
+                continue
+            pairs.append((v1, v2))
+
+        if self.verbose:
+            print("\n" + "-"*10 +" Copy {} @ {} -> {}".format(context.object.data.name,
+                                                              self.first_preset, self.second_preset))
+            for k,v in pairs:
+                print("{}\t{}".format(k, v))
+        _text = "\n".join(("{}\t{}".format(k, v) for k, v in pairs))
+        context.window_manager.clipboard = _text
+        return {'FINISHED'}
+
+
+class PasteArmatureRetarget(Operator):
+    """Paste current Retarget Settings from clipboard (replace)"""
+    bl_idname = "object.expy_kit_armature_paste"
+    bl_label = "Paste"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    swap_columns: BoolProperty(name="Swap columns",
+                          default=False, description="Swap columns of pasted table")
+
+    first_preset: EnumProperty(items=preset_handler.iterate_presets_with_current,
+                             name="1st Column Rig Type",
+                             description="1st table column will be mapped against this rig"
+                             )
+
+    validate: BoolProperty(name="Validate",
+                          default=True, description="Validate pasted names against active armature")
+
+    @classmethod
+    def poll(cls, context):
+        return context.object and context.object.type == 'ARMATURE'
+
+    def execute(self, context):
+        # read clipboard
+        _text = context.window_manager.clipboard
+        _items = ((k.strip(), v.strip()) for k, v in (
+            ln.replace("\r","").split("\t") for ln in _text.split("\n")
+            if ln.strip() and "\t" in ln) if k.strip())
+        # swap columns if needed
+        if self.swap_columns:
+            _items = ((v, k) for k, v in _items)
+        # find a mapping dict to convert 1st column
+        if self.first_preset == "--" or self.first_preset == "--Current--":
+            d1 = {k : k for k in context.object.data.expykit_retarget._as_dict()}
+        else:
+            d1 = {v : k for k, v in preset_handler.get_preset_skel(self.first_preset)._as_dict().items()}
+        # create resulting dict
+        _d = {}
+        for k, v in _items:
+            k = d1.get(k)
+            if not k:
+                continue
+            _d[k] = v
+        # apply
+        skeleton = context.object.data
+        bpy.ops.object.expy_kit_armature_clear()
+        skeleton.expykit_retarget._set_from_dict(_d)
+        # validate
+        if self.validate:
+            preset_handler.validate_preset(skeleton)
         return {'FINISHED'}
 
 
@@ -876,6 +1016,8 @@ class VIEW3D_PT_expy_retarget_root(RetargetBasePanel, bpy.types.Panel):
 
         row = layout.row()
         row.operator(ClearArmatureRetarget.bl_idname, text="Clear All")
+        row.operator(CopyArmatureRetarget.bl_idname, icon='COPYDOWN')
+        row.operator(PasteArmatureRetarget.bl_idname, icon='PASTEDOWN')
 
 
 def poll_armature_bind_to(self, obj):
@@ -892,6 +1034,9 @@ def register_classes():
     bpy.utils.register_class(VIEW3D_MT_retarget_presets)
     bpy.utils.register_class(ExecutePresetArmatureRetarget)
     bpy.utils.register_class(AddPresetArmatureRetarget)
+
+    bpy.utils.register_class(CopyArmatureRetarget)
+    bpy.utils.register_class(PasteArmatureRetarget)
 
     bpy.utils.register_class(SetToActiveBone)
     bpy.utils.register_class(MirrorSettings)
@@ -926,6 +1071,8 @@ def register_classes():
 
 def unregister_classes():
     bpy.utils.unregister_class(VIEW3D_MT_retarget_presets)
+    bpy.utils.unregister_class(PasteArmatureRetarget)
+    bpy.utils.unregister_class(CopyArmatureRetarget)
     bpy.utils.unregister_class(AddPresetArmatureRetarget)
     bpy.utils.unregister_class(ExecutePresetArmatureRetarget)
     bpy.utils.unregister_class(ClearArmatureRetarget)
