@@ -10,6 +10,7 @@ from bl_operators.presets import AddPresetBase
 from . import operators
 from . import preset_handler
 from . import properties
+from .utils import make_annotations, layout_split
 
 
 def menu_header(layout):
@@ -170,13 +171,14 @@ class ActionMakeActive(bpy.types.Operator):
         return {'FINISHED'}
 
 
+@make_annotations
 class ActionRenameSimple(bpy.types.Operator):
     """Rename Current Action"""
     bl_idname = "object.expykit_rename_action_simple"
     bl_label = "Expy Action Rename"
     bl_options = {'REGISTER', 'UNDO'}
 
-    new_name: StringProperty(default="", name="Renamed to")
+    new_name = StringProperty(default="", name="Renamed to")
 
     @classmethod
     def poll(cls, context):
@@ -235,7 +237,7 @@ class VIEW3D_PT_expy_rename_candidates(bpy.types.Panel):
         to_rename = [a for a in bpy.data.actions if len(a.expykit_name_candidates) > 1 and operators.validate_actions(a, context.object.path_resolve)]
 
         row = layout.row()
-        row.operator(ActionMakeActive.bl_idname, text=f"Next of {len(to_rename)} actions to rename")
+        row.operator(ActionMakeActive.bl_idname, text="Next of {} actions to rename".format(len(to_rename)))
 
         action = context.object.animation_data.action
         if not action:
@@ -276,16 +278,17 @@ class VIEW3D_PT_expy_rename_advanced(bpy.types.Panel):
         row.operator(ActionRemoveRenameData.bl_idname, text="Remove Rename Data")
 
 
+@make_annotations
 class ExecutePresetArmatureRetarget(Operator):
     """Apply a Bone Retarget Preset"""
     bl_idname = "object.expy_kit_armature_preset_apply"
     bl_label = "Apply Bone Retarget Preset"
 
-    filepath: StringProperty(
+    filepath = StringProperty(
         subtype='FILE_PATH',
         options={'SKIP_SAVE'},
     )
-    menu_idname: StringProperty(
+    menu_idname = StringProperty(
         name="Menu ID Name",
         description="ID name of the menu this was called from",
         options={'SKIP_SAVE'},
@@ -312,10 +315,13 @@ class ExecutePresetArmatureRetarget(Operator):
             preset_class.reset_cb(context)
 
         if ext == ".py":
-            try:
-                bpy.utils.execfile(filepath)
-            except Exception as ex:
-                self.report({'ERROR'}, "Failed to execute the preset: " + repr(ex))
+            if bpy.app.version < (2, 80):
+                bpy.ops.script.python_file_run(filepath=filepath)
+            else:
+                try:
+                    bpy.utils.execfile(filepath)
+                except Exception as ex:
+                    self.report({'ERROR'}, "Failed to execute the preset: " + repr(ex))
 
         elif ext == ".xml":
             import rna_xml
@@ -416,32 +422,33 @@ class ClearArmatureRetarget(Operator):
         return {'FINISHED'}
 
 
+@make_annotations
 class CopyArmatureRetarget(Operator):
     """Copy current Retarget Settings to clipboard"""
     bl_idname = "object.expy_kit_armature_copy"
     bl_label = "Copy"
 
-    first_preset: EnumProperty(items=preset_handler.iterate_presets_with_current,
+    first_preset = EnumProperty(items=preset_handler.iterate_presets_with_current,
                              name="1st Column Rig Type",
                              description="This rig gives values for 1st table column. '--Current--' in both means 'As is'."
                              )
 
-    second_preset: EnumProperty(items=preset_handler.iterate_presets_with_current,
+    second_preset = EnumProperty(items=preset_handler.iterate_presets_with_current,
                              name="2nd Column Rig Type",
                              description="This rig gives values for 2nd table column"
                              )
 
-    only_mapped1: BoolProperty(name="Only mapped 1st",
+    only_mapped1 = BoolProperty(name="Only mapped 1st",
                               default=True,
                               description="Skip empty values in 1st column"
                               )
 
-    only_mapped2: BoolProperty(name="Only mapped 2nd",
+    only_mapped2 = BoolProperty(name="Only mapped 2nd",
                               default=True,
                               description="Skip empty values in 2nd column"
                               )
 
-    verbose: BoolProperty(name="Verbose",
+    verbose = BoolProperty(name="Verbose",
                           default=True, description="Show copied data in the console")
 
     @classmethod
@@ -502,21 +509,22 @@ class CopyArmatureRetarget(Operator):
         return {'FINISHED'}
 
 
+@make_annotations
 class PasteArmatureRetarget(Operator):
     """Paste current Retarget Settings from clipboard (replace)"""
     bl_idname = "object.expy_kit_armature_paste"
     bl_label = "Paste"
     bl_options = {'REGISTER', 'UNDO'}
 
-    swap_columns: BoolProperty(name="Swap columns",
+    swap_columns = BoolProperty(name="Swap columns",
                           default=False, description="Swap columns of pasted table")
 
-    first_preset: EnumProperty(items=preset_handler.iterate_presets_with_current,
+    first_preset = EnumProperty(items=preset_handler.iterate_presets_with_current,
                              name="1st Column Rig Type",
                              description="1st table column will be mapped against this rig"
                              )
 
-    validate: BoolProperty(name="Validate",
+    validate = BoolProperty(name="Validate",
                           default=True, description="Validate pasted names against active armature")
 
     @classmethod
@@ -554,14 +562,15 @@ class PasteArmatureRetarget(Operator):
         return {'FINISHED'}
 
 
+@make_annotations
 class SetToActiveBone(Operator):
     """Set adjacent UI entry to active bone"""
     bl_idname = "object.expy_kit_set_to_active_bone"
     bl_label = "Set Expy Kit value to active bone"
 
-    attr_name: StringProperty(default="", options={'SKIP_SAVE'})
-    sub_attr_name: StringProperty(default="", options={'SKIP_SAVE'})
-    slot_name: StringProperty(default="", options={'SKIP_SAVE'})
+    attr_name = StringProperty(default="", options={'SKIP_SAVE'})
+    sub_attr_name = StringProperty(default="", options={'SKIP_SAVE'})
+    slot_name = StringProperty(default="", options={'SKIP_SAVE'})
 
     @classmethod
     def poll(cls, context):
@@ -596,16 +605,17 @@ class SetToActiveBone(Operator):
         return {'FINISHED'}
 
 
+@make_annotations
 class MirrorSettings(Operator):
     """Mirror Settings to the other side"""
     bl_idname = "object.expy_kit_settings_mirror"
     bl_label = "Mirror Skeleton Mapping"
     bl_options = {'REGISTER', 'UNDO'}
 
-    src_setting: StringProperty(default="", options={'SKIP_SAVE'})
-    trg_setting: StringProperty(default="", options={'SKIP_SAVE'})
+    src_setting = StringProperty(default="", options={'SKIP_SAVE'})
+    trg_setting = StringProperty(default="", options={'SKIP_SAVE'})
 
-    tolerance: FloatProperty(default=0.001)
+    tolerance = FloatProperty(default=0.001)
 
     @classmethod
     def poll(cls, context):
@@ -700,49 +710,51 @@ class VIEW3D_MT_retarget_presets(Menu):
     draw = Menu.draw_preset
 
 
-class BindFromPanelSelection(bpy.types.Operator):
-    """Constrain to armature selected in panel"""
-    bl_idname = "object.expy_kit_bind_from_panel"
-    bl_label = "Bind Armatures"
-    bl_options = {'REGISTER', 'UNDO'}
+# for blender < 2.79 we use the binding command in the pose mode specials menu instead
+if bpy.app.version >= (2, 79, 0):
+    class BindFromPanelSelection(bpy.types.Operator):
+        """Constrain to armature selected in panel"""
+        bl_idname = "object.expy_kit_bind_from_panel"
+        bl_label = "Bind Armatures"
+        bl_options = {'REGISTER', 'UNDO'}
 
-    @classmethod
-    def poll(cls, context):
-        return context.mode == 'POSE' and context.scene.expykit_bind_to and context.object != context.scene.expykit_bind_to
+        @classmethod
+        def poll(cls, context):
+            return context.mode == 'POSE' and context.scene.expykit_bind_to and context.object != context.scene.expykit_bind_to
 
-    def execute(self, context: Context):
-        for ob in context.selected_objects:
-            ob.select_set(ob == context.object)
+        def execute(self, context: Context):
+            for ob in context.selected_objects:
+                ob.select_set(ob == context.object)
 
-        context.scene.expykit_bind_to.select_set(True)
-        context.view_layer.objects.active = context.scene.expykit_bind_to
-        bpy.ops.object.mode_set(mode='POSE')
+            context.scene.expykit_bind_to.select_set(True)
+            context.view_layer.objects.active = context.scene.expykit_bind_to
+            bpy.ops.object.mode_set(mode='POSE')
 
-        _ad = context.scene.expykit_bind_to.animation_data
-        if _ad and _ad.action:
-            # TODO: this should be in the constrain operator
-            bpy.ops.object.expykit_action_to_range()
+            _ad = context.scene.expykit_bind_to.animation_data
+            if _ad and _ad.action:
+                # TODO: this should be in the constrain operator
+                bpy.ops.object.expykit_action_to_range()
 
-        bpy.ops.armature.expykit_constrain_to_armature('INVOKE_DEFAULT', force_dialog=True)
+            bpy.ops.armature.expykit_constrain_to_armature('INVOKE_DEFAULT', force_dialog=True)
 
-        return {'FINISHED'}
+            return {'FINISHED'}
 
 
-class VIEW3D_PT_BindPanel(bpy.types.Panel):
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = "Expy"
-    bl_label = "Bind To"
+    class VIEW3D_PT_BindPanel(bpy.types.Panel):
+        bl_space_type = 'VIEW_3D'
+        bl_region_type = 'UI'
+        bl_category = "Expy"
+        bl_label = "Bind To"
 
-    @classmethod
-    def poll(cls, context):
-        return context.mode == 'POSE'
+        @classmethod
+        def poll(cls, context):
+            return context.mode == 'POSE'
 
-    def draw(self, context):
-        layout = self.layout
-        layout.prop(context.scene, 'expykit_bind_to', text="")
+        def draw(self, context):
+            layout = self.layout
+            layout.prop(context.scene, 'expykit_bind_to', text="")
 
-        layout.operator(BindFromPanelSelection.bl_idname)
+            layout.operator(BindFromPanelSelection.bl_idname)
 
 
 class RetargetBasePanel:
@@ -755,7 +767,7 @@ class RetargetBasePanel:
         return context.mode == 'POSE'
 
     def sided_rows(self, ob, limbs, bone_names, suffix=""):
-        split = self.layout.split()
+        split = layout_split(self.layout)
 
         labels = None
         side = 'right'
@@ -786,7 +798,7 @@ class RetargetBasePanel:
                 row.label(text=side.title())
 
             for k in bone_names:
-                bsplit = col.split(factor=0.85)
+                bsplit = layout_split(col, factor=0.85)
                 bsplit.prop_search(group, k, ob.data, "bones", text="")
 
                 props = bsplit.operator(SetToActiveBone.bl_idname, text="<-")
@@ -804,7 +816,7 @@ class VIEW3D_PT_expy_retarget(RetargetBasePanel, bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
 
-        split = layout.split(factor=0.75)
+        split = layout_split(layout, factor=0.75)
         split.menu(VIEW3D_MT_retarget_presets.__name__, text=VIEW3D_MT_retarget_presets.bl_label)
         row = split.row(align=True)
         row.operator(AddPresetArmatureRetarget.bl_idname, text="+")
@@ -821,17 +833,17 @@ class VIEW3D_PT_expy_retarget_face(RetargetBasePanel, bpy.types.Panel):
 
         skeleton = ob.data.expykit_retarget
 
-        bsplit = layout.split(factor=0.85)
+        bsplit = layout_split(layout, factor=0.85)
         bsplit.prop_search(skeleton.face, "jaw", ob.data, "bones", text="Jaw")
         props = bsplit.operator(SetToActiveBone.bl_idname, text="<-")
         props.attr_name = 'face'
         props.slot_name = 'jaw'
 
-        split = layout.split()
+        split = layout_split(layout)
         col = split.column()
         col.label(text="Right")
 
-        bsplit = col.split(factor=0.85)
+        bsplit = layout_split(col, factor=0.85)
         col = bsplit.column()
         col.prop_search(skeleton.face, "right_eye", ob.data, "bones", text="")
         col.prop_search(skeleton.face, "right_upLid", ob.data, "bones", text="")
@@ -853,7 +865,7 @@ class VIEW3D_PT_expy_retarget_face(RetargetBasePanel, bpy.types.Panel):
         col = split.column()
         col.label(text="Left")
 
-        bsplit = col.split(factor=0.85)
+        bsplit = layout_split(col, factor=0.85)
         col = bsplit.column()
         col.prop_search(skeleton.face, "left_eye", ob.data, "bones", text="")
         col.prop_search(skeleton.face, "left_upLid", ob.data, "bones", text="")
@@ -882,7 +894,7 @@ class VIEW3D_PT_expy_retarget_fingers(RetargetBasePanel, bpy.types.Panel):
         skeleton = ob.data.expykit_retarget
 
         sides = "right", "left"
-        split = layout.split()
+        split = layout_split(layout)
         finger_bones = ('a', 'b', 'c')
         fingers = ('thumb', 'index', 'middle', 'ring', 'pinky')
         m_props = []
@@ -897,7 +909,7 @@ class VIEW3D_PT_expy_retarget_fingers(RetargetBasePanel, bpy.types.Panel):
                 row.label(text=" ".join((side, k)).title())
                 finger = getattr(group, k)
                 for slot in finger_bones:
-                    bsplit = col.split(factor=0.85)
+                    bsplit = layout_split(col, factor=0.85)
                     bsplit.prop_search(finger, slot, ob.data, "bones", text="")
 
                     f_props = bsplit.operator(SetToActiveBone.bl_idname, text="<-")
@@ -956,7 +968,7 @@ class VIEW3D_PT_expy_retarget_spine(RetargetBasePanel, bpy.types.Panel):
         skeleton = ob.data.expykit_retarget
 
         for slot in ('head', 'neck', 'spine2', 'spine1', 'spine', 'hips'):
-            split = layout.split(factor=0.85)
+            split = layout_split(layout, factor=0.85)
             split.prop_search(skeleton.spine, slot, ob.data, "bones", text="Chest" if slot == 'spine2' else slot.title())
             props = split.operator(SetToActiveBone.bl_idname, text="<-")
             props.attr_name = 'spine'
@@ -1004,7 +1016,7 @@ class VIEW3D_PT_expy_retarget_root(RetargetBasePanel, bpy.types.Panel):
 
         skeleton = ob.data.expykit_retarget
 
-        split = layout.split(factor=0.85)
+        split = layout_split(layout, factor=0.85)
         split.prop_search(skeleton, 'root', ob.data, "bones", text="Root")
         s_props = split.operator(SetToActiveBone.bl_idname, text="<-")
         s_props.attr_name = 'root'
@@ -1025,10 +1037,11 @@ def poll_armature_bind_to(self, obj):
 
 
 def register_classes():
-    bpy.types.Scene.expykit_bind_to = bpy.props.PointerProperty(type=bpy.types.Object,
-                                                                name="Bind To",
-                                                                poll=poll_armature_bind_to,
-                                                                description="This armature will drive another one.")
+    if bpy.app.version >= (2, 79, 0):
+        bpy.types.Scene.expykit_bind_to = PointerProperty(type=bpy.types.Object,
+                                                          name="Bind To",
+                                                          poll=poll_armature_bind_to,
+                                                          description="This armature will drive another one.")
 
     bpy.utils.register_class(ClearArmatureRetarget)
     bpy.utils.register_class(VIEW3D_MT_retarget_presets)
@@ -1051,8 +1064,9 @@ def register_classes():
     bpy.utils.register_class(VIEW3D_PT_expy_rename_candidates)
     bpy.utils.register_class(VIEW3D_PT_expy_rename_advanced)
 
-    bpy.utils.register_class(BindFromPanelSelection)
-    bpy.utils.register_class(VIEW3D_PT_BindPanel)
+    if bpy.app.version >= (2, 79, 0):
+        bpy.utils.register_class(BindFromPanelSelection)
+        bpy.utils.register_class(VIEW3D_PT_BindPanel)
 
     bpy.utils.register_class(VIEW3D_PT_expy_retarget)
     bpy.utils.register_class(VIEW3D_PT_expy_retarget_face)
@@ -1064,8 +1078,13 @@ def register_classes():
     bpy.utils.register_class(VIEW3D_PT_expy_retarget_leg)
     bpy.utils.register_class(VIEW3D_PT_expy_retarget_root)
 
-    bpy.types.VIEW3D_MT_pose_context_menu.append(pose_context_options)
-    bpy.types.VIEW3D_MT_armature_context_menu.append(armature_context_options)
+    if bpy.app.version < (2, 80):
+        bpy.types.VIEW3D_MT_pose_specials.append(pose_context_options)
+        bpy.types.VIEW3D_MT_armature_specials.append(armature_context_options)
+    else:
+        bpy.types.VIEW3D_MT_pose_context_menu.append(pose_context_options)
+        bpy.types.VIEW3D_MT_armature_context_menu.append(armature_context_options)
+
     bpy.types.DOPESHEET_HT_header.append(action_header_buttons)
 
 
@@ -1077,8 +1096,13 @@ def unregister_classes():
     bpy.utils.unregister_class(ExecutePresetArmatureRetarget)
     bpy.utils.unregister_class(ClearArmatureRetarget)
 
-    bpy.types.VIEW3D_MT_pose_context_menu.remove(pose_context_options)
-    bpy.types.VIEW3D_MT_armature_context_menu.remove(armature_context_options)
+    if bpy.app.version < (2, 80):
+        bpy.types.VIEW3D_MT_pose_specials.remove(pose_context_options)
+        bpy.types.VIEW3D_MT_armature_specials.remove(armature_context_options)
+    else:
+        bpy.types.VIEW3D_MT_pose_context_menu.remove(pose_context_options)
+        bpy.types.VIEW3D_MT_armature_context_menu.remove(armature_context_options)
+
     bpy.types.DOPESHEET_HT_header.remove(action_header_buttons)
 
     bpy.utils.unregister_class(BindingsMenu)
@@ -1091,8 +1115,9 @@ def unregister_classes():
     bpy.utils.unregister_class(VIEW3D_PT_expy_rename_candidates)
     bpy.utils.unregister_class(VIEW3D_PT_expy_rename_advanced)
 
-    bpy.utils.unregister_class(BindFromPanelSelection)
-    bpy.utils.unregister_class(VIEW3D_PT_BindPanel)
+    if bpy.app.version >= (2, 79, 0):
+        bpy.utils.unregister_class(BindFromPanelSelection)
+        bpy.utils.unregister_class(VIEW3D_PT_BindPanel)
 
     bpy.utils.unregister_class(VIEW3D_PT_expy_retarget)
     bpy.utils.unregister_class(VIEW3D_PT_expy_retarget_root)
@@ -1107,5 +1132,5 @@ def unregister_classes():
     bpy.utils.unregister_class(SetToActiveBone)
     bpy.utils.unregister_class(MirrorSettings)
 
-    del bpy.types.Scene.expykit_bind_to
-
+    if bpy.app.version >= (2, 79, 0):
+        del bpy.types.Scene.expykit_bind_to
