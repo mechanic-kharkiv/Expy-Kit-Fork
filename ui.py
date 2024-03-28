@@ -560,6 +560,7 @@ class PasteArmatureRetarget(Operator):
         skeleton = context.object.data
         bpy.ops.object.expy_kit_armature_clear()
         skeleton.expykit_retarget._set_from_dict(_d)
+        preset_handler.reset_preset_names(skeleton.expykit_retarget)
         # validate
         if self.validate:
             preset_handler.validate_preset(skeleton)
