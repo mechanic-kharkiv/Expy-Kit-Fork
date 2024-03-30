@@ -156,7 +156,11 @@ class RetargetSettings(RetargetBase, PropertyGroup):
 
         return False
 
-    deform_preset = EnumProperty(items=preset_handler.iterate_presets, name="Deformation Bones")
+    deform_preset = StringProperty(name="Deformation Bones", subtype='FILE_NAME', default="--")
+
+    last_used_preset = StringProperty(
+        name="Last used preset", default="", description="Preset from which the settings were loaded from (or saved to).",
+        options={'SKIP_SAVE','HIDDEN'}) # base name, not a full path
 
 
 def register_classes():
