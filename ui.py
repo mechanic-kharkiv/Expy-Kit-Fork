@@ -441,6 +441,11 @@ class CopyArmatureRetarget(Operator):
                               description="Skip empty values in 2nd column"
                               )
 
+    only_different: BoolProperty(name="Only different",
+                              default=False,
+                              description="Copy only differences between the two"
+                              )
+
     verbose: BoolProperty(name="Verbose",
                           default=True, description="Show copied data in the console")
 
@@ -479,6 +484,10 @@ class CopyArmatureRetarget(Operator):
         if self.first_preset == "--Current--" and self.second_preset == "--Current--":
             d1 = {k : k for k in d1.keys()}
 
+        # reset compare flag if either is empty
+        if d1 is None or d2 is None:
+            self.only_different = False
+
         # get all keys for extraction
         keys = context.object.data.expykit_retarget._as_dict().keys()
 
@@ -493,6 +502,8 @@ class CopyArmatureRetarget(Operator):
             if not v1 and v1 is not False and not v2 and v2 is not False:
                 continue    # both empty
             if type(v1) == bool:
+                continue
+            if self.only_different and nonestr(v1) == nonestr(v2):
                 continue
             pairs.append((nonestr(v1), nonestr(v2)))
 
