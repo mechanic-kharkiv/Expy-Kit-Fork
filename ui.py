@@ -416,37 +416,38 @@ class ClearArmatureRetarget(Operator):
         return {'FINISHED'}
 
 
+@make_annotations
 class CopyArmatureRetarget(Operator):
     """Copy current Retarget Settings to clipboard"""
     bl_idname = "object.expy_kit_armature_copy"
     bl_label = "Copy"
 
-    first_preset: EnumProperty(items=preset_handler.iterate_presets_with_current,
+    first_preset = EnumProperty(items=preset_handler.iterate_presets_with_current,
                              name="1st Column Rig Type",
                              description="This rig gives values for 1st table column. '--Current--' in both means 'As is'."
                              )
 
-    second_preset: EnumProperty(items=preset_handler.iterate_presets_with_current,
+    second_preset = EnumProperty(items=preset_handler.iterate_presets_with_current,
                              name="2nd Column Rig Type",
                              description="This rig gives values for 2nd table column"
                              )
 
-    only_mapped1: BoolProperty(name="Only mapped 1st",
+    only_mapped1 = BoolProperty(name="Only mapped 1st",
                               default=True,
                               description="Skip empty values in 1st column"
                               )
 
-    only_mapped2: BoolProperty(name="Only mapped 2nd",
+    only_mapped2 = BoolProperty(name="Only mapped 2nd",
                               default=True,
                               description="Skip empty values in 2nd column"
                               )
 
-    only_different: BoolProperty(name="Only different",
+    only_different = BoolProperty(name="Only different",
                               default=False,
                               description="Copy only differences between the two"
                               )
 
-    verbose: BoolProperty(name="Verbose",
+    verbose = BoolProperty(name="Verbose",
                           default=True, description="Show copied data in the console")
 
     @classmethod
@@ -519,21 +520,22 @@ class CopyArmatureRetarget(Operator):
         return {'FINISHED'}
 
 
+@make_annotations
 class PasteArmatureRetarget(Operator):
     """Paste current Retarget Settings from clipboard (replace)"""
     bl_idname = "object.expy_kit_armature_paste"
     bl_label = "Paste"
     bl_options = {'REGISTER', 'UNDO'}
 
-    swap_columns: BoolProperty(name="Swap columns",
+    swap_columns = BoolProperty(name="Swap columns",
                           default=False, description="Swap columns of pasted table")
 
-    first_preset: EnumProperty(items=preset_handler.iterate_presets_with_current,
+    first_preset = EnumProperty(items=preset_handler.iterate_presets_with_current,
                              name="1st Column Rig Type",
                              description="1st table column will be mapped against this rig"
                              )
 
-    validate: BoolProperty(name="Validate",
+    validate = BoolProperty(name="Validate",
                           default=True, description="Validate pasted names against active armature")
 
     @classmethod
