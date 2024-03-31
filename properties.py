@@ -25,11 +25,11 @@ class RetargetBase():
     def _as_dict(self, base=''):
         "returns all props with dot-delimited keys"
         _res = {}
-        for _attr in self.keys():
-            if _attr == "name":
+        for _attr in self.rna_type.properties.keys():
+            if _attr in ("rna_type", "name") or not hasattr(self, _attr):
                 continue
             _prop = getattr(self, _attr)
-            _subattrs = getattr(_prop, 'keys', None)
+            _subattrs = getattr(_prop, '_as_dict', None)
             if _prop and _subattrs:
                 _res.update(_prop._as_dict(base=(base + "." if base else "") + _attr))
             else:
@@ -49,7 +49,11 @@ class RetargetBase():
                 continue
             _prop = self
             for _attr in _attrs[:-1]:
+                if not hasattr(_prop, _attr):
+                    continue
                 _prop = getattr(_prop, _attr)
+            if not hasattr(_prop, _attrs[-1]):
+                continue
             _t = type(getattr(_prop, _attrs[-1]))
             if _t is bool:
                 v = v.lower() in ("true", "1", "y", "yes")

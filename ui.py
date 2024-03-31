@@ -430,6 +430,10 @@ class CopyArmatureRetarget(Operator):
         return context.window_manager.invoke_props_dialog(self)
 
     def execute(self, context):
+
+        def nonestr(s):
+            return "" if s is None else str(s)
+
         # get both parts' mappings
         if self.first_preset == "--":
             d1 = None
@@ -468,7 +472,9 @@ class CopyArmatureRetarget(Operator):
                 continue    # both empty
             if type(v1) == bool:
                 continue
-            pairs.append((v1, v2))
+            pairs.append((nonestr(v1), nonestr(v2)))
+
+        pairs.sort()
 
         if self.verbose:
             print("\n" + "-"*10 +" Copy {} @ {} -> {}".format(context.object.data.name,
