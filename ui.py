@@ -461,6 +461,7 @@ class CopyArmatureRetarget(Operator):
         # special case - both are 'current' - as is
         if self.first_preset == "--Current--" and self.second_preset == "--Current--":
             d1 = {k : k for k in d1.keys()}
+            self.only_different = False
 
         # reset compare flag if either is empty
         if d1 is None or d2 is None:
