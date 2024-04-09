@@ -23,7 +23,8 @@ class RetargetBase():
 
     def _as_dict(self, base=''):
         "returns all props with dot-delimited keys"
-        _res = {}
+        from collections import OrderedDict
+        _res = OrderedDict()
         if hasattr(self, "_order"):
             _items = self._order
         else:
