@@ -57,6 +57,23 @@ def get_settings_skel(settings):
     mapping = HumanSkeleton(preset=settings)
     return mapping
 
+# absent bones substitutions (left to right)
+# for fingers it would be 'fingers.thumb' : ((xL,), (xR,),)
+bone_name_synonyms = {
+    'face.left_eye' : (('eye_master.L', 'master_eye.L'),
+                       ('DEF-eye.L', 'eye.L'),
+                    ),
+
+    'face.right_eye' : (('eye_master.R', 'master_eye.R'),
+                        ('DEF-eye.R', 'eye.R'),
+                    ),
+
+    'right_leg.toe' : (('toe.R', 'toe_fk.R'),),
+    'left_leg.toe' : (('toe.L', 'toe_fk.L'),),
+
+    'right_leg_ik.toe' : (('toe.R', 'toe_ik.R'),),
+    'left_leg_ik.toe' : (('toe.L', 'toe_ik.L'),),
+    }
 
 def validate_preset(armature_data, separator=':'):
     settings = armature_data.expykit_retarget
@@ -67,15 +84,43 @@ def validate_preset(armature_data, separator=':'):
         prefix = a_name.rsplit(separator, 1)[0]
         prefix += separator
 
+    def find_possible(name, group, attr):
+        """returns existing bone name looking with prefix, and within synonyms, or empty string"""
+        if not name:
+            return name
+
+        if name in armature_data.bones:
+            return name
+
+        else:
+            if prefix and prefix + name in armature_data.bones:
+                return prefix + name
+
+            synonyms = bone_name_synonyms.get("%s.%s" % (group, attr))
+            if synonyms:
+                for syn_grp in synonyms:
+                    if name in syn_grp:
+                        for syn in syn_grp:
+                            if syn != name:
+                                if syn in armature_data.bones:
+                                    return syn
+
+                                if prefix and prefix + syn in armature_data.bones:
+                                    return prefix + syn
+
+        return ""
+
     for group in ('spine', 'left_arm', 'left_arm_ik', 'right_arm', 'right_arm_ik',
                     'right_leg', 'right_leg_ik', 'left_leg', 'left_leg_ik', 'face'):
 
         trg_setting = getattr(settings, group)
         for k, v in trg_setting.items():
+            if k == "name" or type(v) is not str or not v:
+                continue
             try:
-                if v not in armature_data.bones:
-                    with_prefix = prefix + v
-                    setattr(trg_setting, k, with_prefix if with_prefix in armature_data.bones else "")
+                v1 = find_possible(v, group, k)
+                if v1 != v:
+                    setattr(trg_setting, k, v1)
             except TypeError:
                 continue
 
@@ -88,11 +133,13 @@ def validate_preset(armature_data, separator=':'):
             for slot in finger_bones:
                 bone_name = trg_finger.get(slot)
                 if bone_name and bone_name not in armature_data.bones:
-                    with_prefix = prefix + bone_name
-                    trg_finger[slot] = with_prefix if with_prefix in armature_data.bones else ""
+                    bone_name1 = find_possible(bone_name, trg_grp.name, k)
+                    if bone_name1 != bone_name:
+                        trg_finger[slot] = bone_name1
 
 
 def set_preset_skel(preset, validate=True):
+    """reads given preset into the active armature's settings"""
     if not preset:
         return
     if not preset.endswith(".py"):
@@ -102,25 +149,29 @@ def set_preset_skel(preset, validate=True):
     if not os.path.isfile(preset_path):
         return
 
+    settings = bpy.context.active_object.data.expykit_retarget
+
     if hasattr(importlib.util, "module_from_spec"):
         spec = importlib.util.spec_from_file_location("sel_preset", preset_path)
         preset_mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(preset_mod)
 
         if validate:
-            validate_preset(bpy.context.active_object.data)
+            validate_preset(settings.id_data)
 
         mapping = get_settings_skel(preset_mod.skeleton)
     else:
         # python <3.5. using a crutch
-        mapping = get_preset_skel(preset, bpy.context.active_object.data.expykit_retarget)
+        mapping = get_preset_skel(preset, settings=settings, validate=False)
 
         if validate:
-            validate_preset(bpy.context.active_object.data)
+            validate_preset(settings.id_data)
 
     return mapping
 
-def get_preset_skel(preset, settings=None):
+
+def get_preset_skel(preset, settings=None, validate=True):
+    """reads given preset into the given settings"""
     if not preset:
         return
     if not preset.endswith(".py"):
@@ -132,6 +183,7 @@ def get_preset_skel(preset, settings=None):
 
     # run preset on current settings if there are any, otherwise create Preset settings
     # the attributes of 'skeleton' are set in the preset
+    _new_skeleton = settings is None
     skeleton = settings if settings else PresetSkeleton()
 
     # HACKISH: executing the preset would apply it to the current armature (target).
@@ -143,31 +195,14 @@ def get_preset_skel(preset, settings=None):
     code.body.pop(0)  # remove line 'skeleton = bpy.context.object.data.expykit_retarget' from preset
     eval(compile(code, '', 'exec'))
 
-    if settings:
+    if settings and validate:
         validate_preset(settings.id_data)
 
     mapping = HumanSkeleton(preset=skeleton)
-    del skeleton
+    if _new_skeleton:
+        del skeleton
 
     return mapping
-
-
-def reset_preset_names(settings):
-    "Reset preset names used by scripts"
-    settings.right_arm.name = 'arm'
-    settings.left_arm.name = 'arm'
-
-    settings.right_arm_ik.name = 'arm'
-    settings.left_arm_ik.name = 'arm'
-
-    settings.right_leg.name = 'leg'
-    settings.left_leg.name = 'leg'
-
-    settings.right_leg_ik.name = 'leg'
-    settings.left_leg_ik.name = 'leg'
-
-    settings.right_fingers.name = 'fingers'
-    settings.left_fingers.name = 'fingers'
 
 
 def reset_skeleton(skeleton):
@@ -197,7 +232,31 @@ def reset_skeleton(skeleton):
 
     skeleton.root = ''
     skeleton.deform_preset = '--'
-    reset_preset_names(skeleton)
+
+
+def iterate_filled_props(value, prefix="skeleton"):
+    """yields only filled non-default skeleton's properties with their paths (path, value)"""
+    if isinstance(value, bpy.types.PropertyGroup):
+        if hasattr(value, "_order"):
+            _items = ((k, value.bl_rna.properties[k]) for k in value._order)
+        else:
+            _items = value.bl_rna.properties.items()
+        for sub_value_attr, sub_prop in _items:
+            if (sub_value_attr in ("rna_type", "name") or sub_prop.is_hidden):
+                continue
+            sub_value = getattr(value, sub_value_attr)
+            if hasattr(sub_prop, "default") and sub_prop.default == sub_value:
+                continue
+            yield from iterate_filled_props(sub_value, prefix="%s.%s" % (prefix, sub_value_attr))
+    else:
+        # convert thin wrapped sequences
+        # to simple lists to repr()
+        try:
+            value = value[:]
+        except BaseException:
+            pass
+
+        yield (prefix, value)
 
 
 class PresetFinger:
@@ -228,6 +287,7 @@ class PresetSkeleton:
         self.root = ""
 
     def copy(self, settings):
+        """self <- settings"""
         for group in ('spine', 'left_arm', 'left_arm_ik', 'right_arm', 'right_arm_ik',
                       'right_leg', 'right_leg_ik', 'left_leg', 'left_leg_ik', 'face'):
             setting = getattr(self, group)

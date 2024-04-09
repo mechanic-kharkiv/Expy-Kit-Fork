@@ -289,15 +289,16 @@ class ExecutePresetArmatureRetarget(ExecutePreset):
     bl_idname = "object.expy_kit_armature_preset_apply"
     bl_label = "Apply Bone Retarget Preset"
     preset_menu = "VIEW3D_MT_retarget_presets"
+    bl_options = {'REGISTER', 'UNDO', 'INTERNAL'}
 
     filepath = StringProperty(
         subtype='FILE_PATH',
-        options={'SKIP_SAVE'},
+        options={'SKIP_SAVE', 'HIDDEN'},
     )
     menu_idname = StringProperty(
         name="Menu ID Name",
         description="ID name of the menu this was called from",
-        options={'SKIP_SAVE'},
+        options={'SKIP_SAVE', 'HIDDEN'},
     )
 
     def execute(self, context):
@@ -317,34 +318,15 @@ class AddPresetArmatureRetarget(AddPresetBase, Operator):
     bl_idname = "object.expy_kit_armature_preset_add"
     bl_label = "Add Bone Retarget Preset"
     preset_menu = "VIEW3D_MT_retarget_presets"
+    bl_options = {'INTERNAL'}
 
     # variable used for all preset values
     preset_defines = [
         "skeleton = bpy.context.object.data.expykit_retarget"
     ]
 
-    # properties to store in the preset
-    preset_values = [
-        "skeleton.face",
-
-        "skeleton.spine",
-        "skeleton.right_arm",
-        "skeleton.left_arm",
-        "skeleton.right_leg",
-        "skeleton.left_leg",
-
-        "skeleton.left_fingers",
-        "skeleton.right_fingers",
-
-        "skeleton.right_arm_ik",
-        "skeleton.left_arm_ik",
-
-        "skeleton.right_leg_ik",
-        "skeleton.left_leg_ik",
-
-        "skeleton.deform_preset"
-    ]
-
+    # properties to store in the preset (see RetargetSettings._order)
+    preset_values = []
     # where to store the preset
     preset_subdir = preset_handler.PRESETS_SUBDIR
 
@@ -356,7 +338,17 @@ class AddPresetArmatureRetarget(AddPresetBase, Operator):
             # it's already basename
             context.object.data.expykit_retarget.last_used_preset = preset_class.filepath
 
+    def as_filename(self, name):
+        return AddPresetBase.as_filename(name).title()
+
     def execute(self, context):
+        # filter only filled values
+        locs = locals().copy()
+        for rna_path in self.preset_defines:
+            exec(rna_path, globals(), locs)
+        skeleton = locs["skeleton"]
+        self.preset_values = [p for (p, _) in preset_handler.iterate_filled_props(skeleton, "skeleton")]
+
         # passing filepath (basename, not full) via the menu
         preset_class = getattr(bpy.types, self.preset_menu)
         preset_class.filepath = self.as_filename(self.name) + ".py"
@@ -705,22 +697,22 @@ class MirrorSettings(Operator):
 class MenuItemOperator(Operator):
     """operator for the string selector menu"""
     bl_idname = "expy_kit.menu_item_setter"
-    bl_label = "dummy"
-    bl_options = {'INTERNAL'}
+    bl_label = "Set preset name"
+    bl_options = {'REGISTER', 'UNDO', 'INTERNAL'}
 
     # python expression to find the target object
-    target_object = StringProperty(options={'SKIP_SAVE'})
+    target_object = StringProperty(options={'SKIP_SAVE', 'HIDDEN'})
 
     # the property name to store the selection inside the target object
-    target_attr = StringProperty(options={'SKIP_SAVE'})
+    target_attr = StringProperty(options={'SKIP_SAVE', 'HIDDEN'})
 
     # current value to set
-    item_value = StringProperty(options={'SKIP_SAVE'})
+    item_value = StringProperty(options={'SKIP_SAVE', 'HIDDEN'})
 
     menu_idname = StringProperty(
             name="Menu ID Name",
             description="ID name of the menu this was called from",
-            options={'SKIP_SAVE'},
+            options={'SKIP_SAVE', 'HIDDEN'},
             )
 
     def execute(self, context):
@@ -779,7 +771,6 @@ class VIEW3D_MT_retarget_presets(Menu):
         context.object.data.expykit_retarget.last_used_preset = basename(cls.filepath)
         # and postprocess retarget settings
         preset_handler.validate_preset(context.object.data)
-        preset_handler.reset_preset_names(context.object.data.expykit_retarget)
 
 
 # for blender < 2.79 we use the binding command in the pose mode specials menu instead
