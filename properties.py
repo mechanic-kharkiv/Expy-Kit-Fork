@@ -24,7 +24,11 @@ class RetargetBase():
     def _as_dict(self, base=''):
         "returns all props with dot-delimited keys"
         _res = {}
-        for _attr in self.rna_type.properties.keys():
+        if hasattr(self, "_order"):
+            _items = self._order
+        else:
+            _items = self.rna_type.properties.keys()
+        for _attr in _items:
             if _attr in ("rna_type", "name") or not hasattr(self, _attr):
                 continue
             _prop = getattr(self, _attr)
@@ -62,6 +66,8 @@ class RetargetBase():
 
 
 class RetargetSpine(RetargetBase, PropertyGroup):
+    _order = ("head", "neck", "spine2", "spine1", "spine", "hips")
+
     head: StringProperty(name="head")
     neck: StringProperty(name="neck")
     spine2: StringProperty(name="spine2")
@@ -71,6 +77,9 @@ class RetargetSpine(RetargetBase, PropertyGroup):
 
 
 class RetargetArm(RetargetBase, PropertyGroup):
+    _order = ("shoulder", "arm", "arm_twist", "arm_twist_02", "forearm", "forearm_twist",
+              "forearm_twist_02", "hand")
+
     shoulder: StringProperty(name="shoulder")
     arm: StringProperty(name="arm")
     arm_twist: StringProperty(name="arm_twist")
@@ -84,6 +93,9 @@ class RetargetArm(RetargetBase, PropertyGroup):
 
 
 class RetargetLeg(RetargetBase, PropertyGroup):
+    _order = ("upleg", "upleg_twist", "upleg_twist_02", "leg", "leg_twist", "leg_twist_02",
+              "foot", "toe")
+
     upleg: StringProperty(name="upleg")
     upleg_twist: StringProperty(name="upleg_twist")
     upleg_twist_02: StringProperty(name="upleg_twist_02")
@@ -97,6 +109,8 @@ class RetargetLeg(RetargetBase, PropertyGroup):
 
 
 class RetargetFinger(RetargetBase, PropertyGroup):
+    _order = ("meta", "a", "b", "c")
+
     meta: StringProperty(name="meta")
     a: StringProperty(name="A")
     b: StringProperty(name="B")
@@ -104,6 +118,8 @@ class RetargetFinger(RetargetBase, PropertyGroup):
 
 
 class RetargetFingers(RetargetBase, PropertyGroup):
+    _order = ("thumb", "index", "middle", "ring", "pinky")
+
     thumb: PointerProperty(type=RetargetFinger)
     index: PointerProperty(type=RetargetFinger)
     middle: PointerProperty(type=RetargetFinger)
@@ -114,6 +130,8 @@ class RetargetFingers(RetargetBase, PropertyGroup):
 
 
 class RetargetFaceSimple(RetargetBase, PropertyGroup):
+    _order = ("jaw", "right_eye", "left_eye", "right_upLid", "left_upLid", "super_copy")
+
     jaw: StringProperty(name="jaw")
     left_eye: StringProperty(name="left_eye")
     right_eye: StringProperty(name="right_eye")
@@ -125,6 +143,14 @@ class RetargetFaceSimple(RetargetBase, PropertyGroup):
 
 
 class RetargetSettings(RetargetBase, PropertyGroup):
+    _order = ("face", "spine",
+              "right_arm", "left_arm",
+              "right_leg", "left_leg",
+              "right_fingers", "left_fingers",
+              "right_arm_ik", "left_arm_ik",
+              "right_leg_ik", "left_leg_ik",
+              "root", "deform_preset")
+
     face: PointerProperty(type=RetargetFaceSimple)
     spine: PointerProperty(type=RetargetSpine)
 
