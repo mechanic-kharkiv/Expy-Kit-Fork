@@ -6,7 +6,7 @@ version 0.6
 - "Rigify Game Friendly": fix twist reparent on right side
 - Retarget settings for fingers now include palm bones
 - Retarget settings: fixed '--Current--' settings disappearing if unsaved
-- Retarget settings: new commands "Copy", "Paste"
+- Retarget settings: new "Copy", "Paste" commands
 - "Retarget presets" menu now shows last preset name used for the active armature
 - "Add a Bone Retarget Preset" button now reuses the last preset name used for the active armature
 - "Deformation Bones" preset name now doesn't change on preset directory files order change
@@ -19,7 +19,7 @@ version 0.6
 - "Extract Metarig" puts together palm, finger bones more reliably
 - "Extract Metarig": better pelvis, breast bones positioning
 - "Extract Metarig": fixed 'No face bones' flag was killing some bones just once
-- "Extract Metarig": now works in local view from 2.76 on
+- "Extract Metarig" now works in local view from 2.76 on
 
 
 version 0.6

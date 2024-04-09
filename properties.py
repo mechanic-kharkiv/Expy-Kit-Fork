@@ -5,6 +5,8 @@ from bpy.props import PointerProperty
 from bpy.props import BoolProperty
 from bpy.props import EnumProperty
 
+from collections import OrderedDict
+
 from . import preset_handler
 from .utils import make_annotations
 
@@ -24,7 +26,7 @@ class RetargetBase():
 
     def _as_dict(self, base=''):
         "returns all props with dot-delimited keys"
-        _res = {}
+        _res = OrderedDict()
         if hasattr(self, "_order"):
             _items = self._order
         else:

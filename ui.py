@@ -478,8 +478,6 @@ class CopyArmatureRetarget(Operator):
                 continue
             pairs.append((nonestr(v1), nonestr(v2)))
 
-        pairs.sort()
-
         if self.verbose:
             print("\n" + "-"*10 +" Copy {} @ {} -> {}".format(context.object.data.name,
                                                               self.first_preset, self.second_preset))
